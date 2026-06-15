@@ -1,11 +1,6 @@
 
 import sympy as syp
 
-X_BOND = 'X'; 
-Y_BOND = 'Y'; 
-Z_BOND = 'Z';
-J3_BOND = 'J3';
-
 # primitive unit cell vectors of the honeycomb lattice
 a1 = syp.Matrix([-syp.Integer(1)/2,syp.sqrt(3)/2,0]);
 a2 = syp.Matrix([syp.Integer(1)/2,syp.sqrt(3)/2,0]);
@@ -28,11 +23,16 @@ delta_x = a2 + delta_z;
 delta_y = a1 + delta_z;
 
 
-#### atom_pos: Nx3 sympy matrix of atom positions
-#### v1,v2,v3: magnetic unit cell vector
+#### atom_pos:  Nx3 sympy matrix of atom positions
+#### v1,v2,v3:  magnetic unit cell vector
+#### bond_vecs: displacement vectors for each type of bonds
 #### return: list of bonds. each bond is a list of [site_i_index, site_j_index, BOND_TYPE, cell_shift_vector]
 #### you can modify to include more bonds (further neigbhour, interlayer, etc.) or to apply to other lattices
-def getHoneycombBonds(atom_pos, v1, v2, v3):
+def getHoneycombBonds(atom_pos, v1, v2, v3, bond_vecs):
+
+    if not all( (bv.shape == (3,1)) and (isinstance(bv, syp.matrices.dense.MutableDenseMatrix) or isinstance(bv, syp.matrices.immutable.ImmutableDenseMatrix)) for bv in bond_vecs):
+        raise Exception("each bond_vector must be 3x1 matrix") 
+
 
     bonds = [];
 
@@ -47,14 +47,9 @@ def getHoneycombBonds(atom_pos, v1, v2, v3):
         for j in range(atom_pos.shape[0]):
             d = syp.simplify(atom_pos[j,:] - atom_pos[i,:]).T;
 
-            if d.equals(delta_z):
-                bonds.append([i,j,Z_BOND,syp.zeros(3,1)]);
-            if d.equals(delta_x):
-                bonds.append([i,j,X_BOND,syp.zeros(3,1)]);
-            if d.equals(delta_y):
-                bonds.append([i,j,Y_BOND,syp.zeros(3,1)]);
-            if d.equals((a1+a2)*2/3) or d.equals((a1-2*a2)*2/3) or d.equals((a2-2*a1)*2/3):
-                bonds.append([i,j,J3_BOND,zeros(3,1)]);
+            for k, vec in enumerate(bond_vecs):
+                if d.equals(vec):
+                    bonds.append([i,j,k,syp.zeros(3,1)]);
 
                 
     # add bonds between neigbouring unit cells with the corresponding unit cell shifts
@@ -63,14 +58,9 @@ def getHoneycombBonds(atom_pos, v1, v2, v3):
             for j in range(atom_pos.shape[0]):
                 d = syp.simplify((atom_pos[j,:] - atom_pos[i,:]).T + shift);
                 
-                if d.equals(delta_z):
-                    bonds.append([i,j,Z_BOND,shift]);
-                if d.equals(delta_x):
-                    bonds.append([i,j,X_BOND,shift]);
-                if d.equals(delta_y):
-                    bonds.append([i,j,Y_BOND,shift]);
-                if d.equals((a1+a2)*2/3) or d.equals((a1-2*a2)*2/3) or d.equals((a2-2*a1)*2/3):
-                    bonds.append([i,j,J3_BOND,shift]);
+                for k, vec in enumerate(bond_vecs):
+                    if d.equals(vec):
+                        bonds.append([i,j,k,shift]);
 
                            
     return bonds;

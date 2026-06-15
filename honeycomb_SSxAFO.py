@@ -19,7 +19,7 @@ h, J, alpha, beta = syp.symbols('h, J, alpha, beta', real=True);
 t1, p1, t2, p2, t3, p3, t4, p4, t5, p5, t6, p6, t7, p7, t8, p8, t9, p9, t10, p10, t11, p11, t12, p12 = syp.symbols('t_1, p_1, t_2, p_2, t_3, p_3, t_4, p_4, t_5, p_5, t_6, p_6, t_7, p_7, t_8, p_8, t_9, p_9, t_10, p_10, t_11, p_11, t_12, p_12', real=True);
 h1, g1, h2, g2, h3, g3, h4, g4, h5, g5, h6, g6, h7, g7, h8, g8, h9, g9, h10, g10, h11, g11, h12, g12 = syp.symbols('h_1, g_1, h_2, g_2, h_3, g_3, h_4, g_4, h_5, g_5, h_6, g_6, h_7, g_7, h_8, g_8, h_9, g_9, h_10, g_10, h_11, g_11, h_12, g_12', real=True);
 
-
+start = timer();
 N = 4; # the zigzag order has 4 site in the magnetic unit cell
 
 ## spin directions (spin_theta, spin_phi, orb_theta, orb_phi) on each site
@@ -30,23 +30,9 @@ spin[1,0] = t2; spin[1,1] = 0; spin[1,2] = h2; spin[1,3] = 0;
 spin[2,0] = t3; spin[2,1] = 0; spin[2,2] = h3; spin[2,3] = 0; 
 spin[3,0] = t4; spin[3,1] = 0; spin[3,2] = h4; spin[3,3] = 0;
 
-## position of each site in the magnetic unit cell. Make sure to use the same convention as in the Bonds.py file
-atom_pos = syp.zeros(N,3);
-atom_pos[0,:] = syp.zeros(1,3);
-atom_pos[1,:] = Bonds.delta_x.T;
-atom_pos[2,:] = Bonds.delta_x.T-Bonds.delta_z.T;
-atom_pos[3,:] = 2*Bonds.delta_x.T-Bonds.delta_z.T;
-
-## magnetic unit cell vectors
-v1 = syp.Matrix([1,0,0]);
-v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
-v3 = syp.Matrix([0, 0, syp.Integer(1)]);
-
-## calculate all the bonds
-bonds = Bonds.getHoneycombBonds(atom_pos, v1,v2,v3);
-print(bonds)
-
-## define Hamiltonian: bond interactions
+## define Hamiltonian with types of bonds. Each bond type has a 3x1 displacement vector and two 3x3 interaction matrices for spin and orbital interactions. 
+## For other types of interactions, you can modify the spinorb_Hamiltonian() function as needed.
+## make sure to use the same convention as in the Bonds.py file
 Dz = syp.Matrix([[-alpha, 0, 0],
         [0, -alpha, 0],
         [0, 0, J-alpha]]);
@@ -68,9 +54,29 @@ My = syp.Matrix([[1, 0, 0],
             [0, 1, 0],
             [0, 0, 1]]);
 
-## get the symbolic Hamiltonian
-H4, E4 = SW.spinorb_Hamiltonian(spin, bonds, Dz,Mz,Dx,Mx,Dy,My,beta)
+bond_vecs = [Bonds.delta_x, Bonds.delta_y, Bonds.delta_z]
+bond_Js = [[Dx,Mx], [Dy,My], [Dz,Mz]]
 
+## magnetic unit cell vectors
+v1 = syp.Matrix([1,0,0]);
+v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
+v3 = syp.Matrix([0, 0, syp.Integer(1)]);
+
+## position of each site in the magnetic unit cell. Make sure to use the same convention as in the Bonds.py file
+atom_pos = syp.zeros(N,3);
+atom_pos[0,:] = syp.zeros(1,3);
+atom_pos[1,:] = Bonds.delta_x.T;
+atom_pos[2,:] = Bonds.delta_x.T-Bonds.delta_z.T;
+atom_pos[3,:] = 2*Bonds.delta_x.T-Bonds.delta_z.T;
+
+## calculate all the bonds
+bonds = Bonds.getHoneycombBonds(atom_pos, v1,v2,v3, bond_vecs);
+print("Bonds. time: ", timer()-start);
+
+
+## get the symbolic Hamiltonian
+H4, E4 = SW.spinorb_Hamiltonian(spin, bonds, bond_Js,beta)
+print("Hamiltonian. time: ", timer()-start);
 
 
 ## substitute in the numerical spin directions

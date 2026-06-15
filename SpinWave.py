@@ -43,7 +43,7 @@ def get_R(theta,phi):
     return R;
 
 ## perform the generalized Holstein-Primakoff transformation on the spin-orbital Hamiltonian
-def generalized_HPT_transform(spin,b,Dz,Mz,Dx,Mx,Dy,My,beta):
+def generalized_HPT_transform(spin,b,bond_Js,beta):
     
     at1 = b[0];
     at2 = b[1];
@@ -51,18 +51,8 @@ def generalized_HPT_transform(spin,b,Dz,Mz,Dx,Mx,Dy,My,beta):
     R1t = get_R(spin[at1,2], spin[at1,3]);
     R2s = get_R(spin[at2,0], spin[at2,1]);
     R2t = get_R(spin[at2,2], spin[at2,3]);
-    D = syp.zeros(3);
-    M = syp.zeros(3);
-
-    if b[2] == Bonds.Z_BOND:
-        D = R2s.T@Dz@R1s
-        M = R2t.T@Mz@R1t
-    if b[2] == Bonds.X_BOND:
-        D = R2s.T@Dx@R1s
-        M = R2t.T@Mx@R1t
-    if b[2] == Bonds.Y_BOND:
-        D = R2s.T@Dy@R1s
-        M = R2t.T@My@R1t
+    D = R2s.T@bond_Js[b[2]][0]@R1s
+    M = R2t.T@bond_Js[b[2]][1]@R1t
     
     terms = ((S_local2.T@D@S_local1)[0]+beta)*((T_local2.T@M@T_local1)[0]-beta);
 
@@ -95,11 +85,9 @@ def generalized_HPT_transform(spin,b,Dz,Mz,Dx,Mx,Dy,My,beta):
 ## extract the spin wave Hamiltonian from the HPT transformation
 ## spin: spin directions (spin_theta, spin_phi, orb_theta, orb_phi) of all sites
 ## bonds: all bonds
-## Dz, Mz: spin interactions and orbital interactions on the Z_bond
-## Dx, Mx: spin interactions and orbital interactions on the Z_bond
-## Dy, My: spin interactions and orbital interactions on the Z_bond
+## bond_Js: list of two 3x3 interaction matrices (spin and orbital) for each type of bonds
 ## return: symbolic spin wave Hamiltonian and classical ground state energy
-def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
+def spinorb_Hamiltonian(spin,bonds,bond_Js,beta):
 
     N = spin.shape[0];
     H = syp.zeros(2*N*3);
@@ -107,7 +95,7 @@ def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
     
     for b in bonds:
 
-        expr = generalized_HPT_transform(spin,b,Dz,Mz,Dx,Mx,Dy,My,beta);
+        expr = generalized_HPT_transform(spin,b,bond_Js,beta);
         # Fourier transform phase factor
         phase = syp.Integer(1);
         if b[3]!=0:
@@ -148,6 +136,7 @@ def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
                 H[at1*3+i,at2*3+j] += H_term*gamma;
                 H[at2*3+N*3+j, at1*3+N*3+i] += (H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
 
+                ## the conjugate a*b__d terms
                 H[at2*3+j,at1*3+i] += syp.conjugate(H_term*gamma);
                 H[at1*3+N*3+i,at2*3+N*3+j] += syp.conjugate(H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
                     
@@ -162,6 +151,7 @@ def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
                 gamma = 1;
                 H[at1*3+i,at1*3+j] += H_term;
                 H[at1*3+N*3+j,at1*3+N*3+i] += H_term;
+                ## the conjugate terms are already included in the ij permuations
 
                 H[at2*3+i,at2*3+j] += H_term;
                 H[at2*3+N*3+j,at2*3+N*3+i] += H_term;
@@ -178,19 +168,9 @@ def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
                 H[at1*3+i,at2*3+N*3+j] += H_term*gamma;
                 H[at2*3+j, at1*3+N*3+i] += (H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
                 
+                ## the conjugate a*b terms terms
                 H[at2*3+N*3+j,at1*3+i] += syp.conjugate(H_term*gamma);
                 H[at1*3+N*3+i, at2*3+j] += syp.conjugate(H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
-        
-#         a1_list = [a1, a2, a3];
-#         a2_list = [b1, b2, b3];
-#         for i in range(len(a1_list)):
-#             for j in range(len(a2_list)):
-#                 H_term = sum([expr2.args[k]/(a1_list[i]*a2_list[j]) for k in expr_contains(expr2.args, a1_list[i]*a2_list[j])]);
-#                 if isinstance(H_term, (int, float)):
-#                     H_term = Integer(1)*H_term
-#                 gamma = phase;
-#                 H[at2*3+N*3+j,at1*3+i] += H_term*gamma;
-#                 H[at1*3+N*3+i, at2*3+j] += (H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
 
 
 
@@ -202,23 +182,14 @@ def spinorb_Hamiltonian(spin,bonds,Dz,Mz,Dx,Mx,Dy,My,beta):
 
 
 ## perform the Holstein-Primakoff transformation on the spin Hamiltonian
-def HPT_transform(spin,b,Dz,Dx,Dy,J3):
+def HPT_transform(spin,b,bond_Js):
     
     at1 = b[0];
     at2 = b[1];
     R1s = get_R(spin[at1,0], spin[at1,1]);
     R2s = get_R(spin[at2,0], spin[at2,1]);
-    D = syp.zeros(3);
 
-    if b[2] == Bonds.Z_BOND:
-        D = R2s.T@Dz@R1s
-    if b[2] == Bonds.X_BOND:
-        D = R2s.T@Dx@R1s
-    if b[2] == Bonds.Y_BOND:
-        D = R2s.T@Dy@R1s
-    if b[2] == Bonds.J3_BOND:
-        D = J3*(R2s.T@syp.eye(3)@R1s)
-
+    D = R2s.T@bond_Js[b[2]]@R1s
     terms = (S_local2.T@D@S_local1)[0];
 
     expr = syp.expand(terms);
@@ -233,11 +204,9 @@ def HPT_transform(spin,b,Dz,Dx,Dy,J3):
 ## extract the spin wave Hamiltonian from the HPT transformation
 ## spin: spin directions (spin_theta, spin_phi) of all sites
 ## bonds: all bonds
-## Dz: spin interactions on the Z_bond
-## Dx: spin interactions on the Z_bond
-## Dy: spin interactions on the Z_bond
+## bond_Js: 3x3 interaction matrices for each type of bonds
 ## return: symbolic spin wave Hamiltonian and classical ground state energy
-def spin_Hamiltonian(spin,bonds,Dz,Dx,Dy,hv,J3):
+def spin_Hamiltonian(spin,bonds,bond_Js,hv):
 
     N = spin.shape[0];
     H = syp.zeros(2*N);
@@ -245,7 +214,7 @@ def spin_Hamiltonian(spin,bonds,Dz,Dx,Dy,hv,J3):
     
     for b in bonds:
 
-        expr = HPT_transform(spin,b,Dz,Dx,Dy,J3);
+        expr = HPT_transform(spin,b,bond_Js);
         # Fourier transform phase factor
         phase = syp.Integer(1);
         if b[3]!=0:
@@ -310,17 +279,10 @@ def spin_Hamiltonian(spin,bonds,Dz,Dx,Dy,hv,J3):
                 
                 H[at2+N+j,at1+i] += syp.conjugate(H_term*gamma);
                 H[at1+N+i, at2+j] += syp.conjugate(H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
+
+
+        ### if the Hamiltonian has single-ion anisotropy term S^2, then need to include the a*a and a__d*a__d cases
         
-#         a1_list = [a1, a2, a3];
-#         a2_list = [b1, b2, b3];
-#         for i in range(len(a1_list)):
-#             for j in range(len(a2_list)):
-#                 H_term = sum([expr2.args[k]/(a1_list[i]*a2_list[j]) for k in expr_contains(expr2.args, a1_list[i]*a2_list[j])]);
-#                 if isinstance(H_term, (int, float)):
-#                     H_term = Integer(1)*H_term
-#                 gamma = phase;
-#                 H[at2*3+N*3+j,at1*3+i] += H_term*gamma;
-#                 H[at1*3+N*3+i, at2*3+j] += (H_term*gamma).subs([(k1,-k1), (k2,-k2)]);
 
     for i in range(N):
         spin_dir = syp.Matrix([syp.sin(spin[i,0])*syp.cos(spin[i,1]), syp.sin(spin[i,0])*syp.sin(spin[i,1]), syp.cos(spin[i,0])])

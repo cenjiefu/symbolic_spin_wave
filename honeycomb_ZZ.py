@@ -30,23 +30,7 @@ spin[1,0] = t1; spin[1,1] = p1;
 spin[2,0] = t2; spin[2,1] = p2; 
 spin[3,0] = t2; spin[3,1] = p2;
 
-## position of each site in the magnetic unit cell. Make sure to use the same convention as in the Bonds.py file
-atom_pos = syp.zeros(N,3);
-atom_pos[0,:] = syp.zeros(1,3);
-atom_pos[1,:] = Bonds.delta_x.T;
-atom_pos[2,:] = Bonds.delta_x.T-Bonds.delta_z.T;
-atom_pos[3,:] = 2*Bonds.delta_x.T-Bonds.delta_z.T;
-
-## magnetic unit cell vectors
-v1 = syp.Matrix([1,0,0]);
-v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
-v3 = syp.Matrix([0, 0, syp.Integer(1)]);
-
-## calculate all the bonds
-bonds = Bonds.getHoneycombBonds(atom_pos, v1,v2,v3);
-print("Bonds. time: ", timer()-start);
-
-## define Hamiltonian: bond interactions
+## define Hamiltonian with types of bonds. Each bond type has a 3x1 displacement vector and a 3x3 interaction matrix. make sure to use the same convention as in the Bonds.py file
 th_vec = syp.acos(1/syp.sqrt((3)));
 abc = syp.Matrix([[syp.sin(th_vec)*syp.cos(-syp.pi/3), syp.sin(th_vec)*syp.sin(-syp.pi/3), syp.cos(th_vec)],
                [syp.sin(th_vec)*syp.cos(syp.pi/3), syp.sin(th_vec)*syp.sin(syp.pi/3), syp.cos(th_vec)],
@@ -64,13 +48,33 @@ Dz = syp.Matrix([[Jab+Jpp, 0, -syp.sqrt(2)*Jcp],
     [0, Jab-Jpp, 0],
     [-syp.sqrt(2)*Jcp,    0, Jc]]);
 
-Dx = C3.T@Dz@C3;
-Dy = C3.T@C3.T@Dz@C3@C3;
+Dx = syp.expand(C3.T@Dz@C3);
+Dy = syp.expand(C3.T@C3.T@Dz@C3@C3);
 
+bond_vecs = [Bonds.delta_x, Bonds.delta_y, Bonds.delta_z, (Bonds.a1+Bonds.a2)*2/3, (Bonds.a1-2*Bonds.a2)*2/3, (Bonds.a2-2*Bonds.a1)*2/3]
+bond_Js = [Dx, Dy, Dz, J3*syp.eye(3), J3*syp.eye(3), J3*syp.eye(3)]
+
+## magnetic unit cell vectors
+v1 = syp.Matrix([1,0,0]);
+v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
+v3 = syp.Matrix([0, 0, syp.Integer(1)]);
+
+## position of each site in the magnetic unit cell. 
+atom_pos = syp.zeros(N,3);
+atom_pos[0,:] = syp.zeros(1,3);
+atom_pos[1,:] = Bonds.delta_x.T;
+atom_pos[2,:] = Bonds.delta_x.T-Bonds.delta_z.T;
+atom_pos[3,:] = 2*Bonds.delta_x.T-Bonds.delta_z.T;
+
+## calculate all the bonds
+bonds = Bonds.getHoneycombBonds(atom_pos, v1,v2,v3, bond_vecs);
+print("Bonds. time: ", timer()-start);
+
+## add the external magnetic field
 hv = h*g*syp.Matrix([syp.sin(th_H)*syp.cos(phi_H), syp.sin(th_H)*syp.sin(phi_H), syp.cos(th_H)])
 
 ## get the symbolic Hamiltonian
-H4, E4 = SW.spin_Hamiltonian(spin, bonds,Dz,Dx,Dy,hv,J3)
+H4, E4 = SW.spin_Hamiltonian(spin, bonds, bond_Js, hv)
 print("Hamiltonian. time: ", timer()-start);
 
 ## Numerical interactions
@@ -120,7 +124,6 @@ H_k_num = H4.subs([(h, h_num), (g, g_num), (th_H, th_H_num), (phi_H, phi_H_num),
 tau3 = np.eye(H_k_num.shape[0],dtype=np.complex128);
 tau3[range(H_k_num.shape[0]//2, H_k_num.shape[0]), range(H_k_num.shape[0]//2, H_k_num.shape[0])] = -1;
 H_func = nb.jit(syp.lambdify([SW.k1, SW.k2, SW.k3], expr2f(H_k_num,10), 'numpy'), nopython=True); # if the Hamiltonian is large, numba jit will take a long time.
-print("numerical Hamiltonian. time: ", timer()-start);
 
 
 N_band = H_k_num.shape[0]
@@ -137,8 +140,8 @@ def  e_func(k_list):
     return E_list
 
 
-
 print(e_func(np.array([[float(Bonds.M3_point[0]), float(Bonds.M3_point[1]), 0.0]])))
+print("numerical Hamiltonian. time: ", timer()-start);
 
 k_path = np.stack(( np.linspace(0, float(Bonds.M3_point[0])*2, 101), np.linspace(0, float(Bonds.M3_point[1])*2, 101), np.linspace(0, 0, 101) )).T
 Ek = e_func(k_path)
