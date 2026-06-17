@@ -20,15 +20,6 @@ t1, p1, t2, p2, t3, p3, t4, p4, t5, p5, t6, p6, t7, p7, t8, p8, t9, p9, t10, p10
 h1, g1, h2, g2, h3, g3, h4, g4, h5, g5, h6, g6, h7, g7, h8, g8, h9, g9, h10, g10, h11, g11, h12, g12 = syp.symbols('h_1, g_1, h_2, g_2, h_3, g_3, h_4, g_4, h_5, g_5, h_6, g_6, h_7, g_7, h_8, g_8, h_9, g_9, h_10, g_10, h_11, g_11, h_12, g_12', real=True);
 
 start = timer();
-N = 4; # the zigzag order has 4 site in the magnetic unit cell
-
-## spin directions (spin_theta, spin_phi, orb_theta, orb_phi) on each site
-## can use symbols or numerical values
-spin = syp.zeros(N,4); 
-spin[0,0] = t1; spin[0,1] = 0; spin[0,2] = h1; spin[0,3] = 0; 
-spin[1,0] = t2; spin[1,1] = 0; spin[1,2] = h2; spin[1,3] = 0;
-spin[2,0] = t3; spin[2,1] = 0; spin[2,2] = h3; spin[2,3] = 0; 
-spin[3,0] = t4; spin[3,1] = 0; spin[3,2] = h4; spin[3,3] = 0;
 
 ## define Hamiltonian with types of bonds. Each bond type has a 3x1 displacement vector and two 3x3 interaction matrices for spin and orbital interactions. 
 ## For other types of interactions, you can modify the spinorb_Hamiltonian() function as needed.
@@ -62,6 +53,16 @@ v1 = syp.Matrix([1,0,0]);
 v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
 v3 = syp.Matrix([0, 0, syp.Integer(1)]);
 
+N = 4; # the SSxAFO order has 4 site in the magnetic unit cell
+
+## spin directions (spin_theta, spin_phi, orb_theta, orb_phi) on each site
+## can use symbols or numerical values
+spin = syp.zeros(N,4); 
+spin[0,0] = t1; spin[0,1] = 0; spin[0,2] = h1; spin[0,3] = 0; 
+spin[1,0] = t2; spin[1,1] = 0; spin[1,2] = h2; spin[1,3] = 0;
+spin[2,0] = t3; spin[2,1] = 0; spin[2,2] = h3; spin[2,3] = 0; 
+spin[3,0] = t4; spin[3,1] = 0; spin[3,2] = h4; spin[3,3] = 0;
+
 ## position of each site in the magnetic unit cell. Make sure to use the same convention as in the Bonds.py file
 atom_pos = syp.zeros(N,3);
 atom_pos[0,:] = syp.zeros(1,3);
@@ -80,6 +81,7 @@ print("Hamiltonian. time: ", timer()-start);
 
 
 ## substitute in the numerical spin directions
+## x,y,z components of each spin
 ss1 = np.array([[0, 0, 1],
                 [0, 0, -1],
                 [0, 0, -1],
@@ -93,7 +95,7 @@ afo1 = np.array([[0, 0, -1],
 sv = (ss1)
 ov = (afo1)
 
-N = 4
+## calculate the angles from the x,y,z components
 angles = syp.zeros(N,4);
 for i in range(N):
     angles[i,0] = syp.acos(sv[i,2])
@@ -126,18 +128,16 @@ H_num = H4.subs([(t1,angles[0,0]),(p1,angles[0,1]),(h1,angles[0,2]),(g1,angles[0
 ## substitute in the numerical interactions
 J_num = 2.0;
 a_num = 0.5;
-beta_num = 0.15;
+b_num = 0.15;
 
-print(E_num.subs([(J,J_num), (alpha,a_num), (beta, beta_num)])/(N/2))
-print("beta_crit = ", np.abs(J_num/4 - a_num/2)/np.abs(J_num/2+a_num/2+3/2))
-H_num2 = H_num.subs([(J,J_num), (alpha,a_num), (beta, beta_num)])
+print(E_num.subs([(J,J_num), (alpha,a_num), (beta, b_num)])/(N/2))
+H_num2 = H_num.subs([(J,J_num), (alpha,a_num), (beta, b_num)])
 
 
 ## diagonalize the Hamiltonian
 tau3 = np.eye(H_num.shape[0],dtype=np.complex128);
 tau3[range(H_num.shape[0]//2, H_num.shape[0]), range(H_num.shape[0]//2, H_num.shape[0])] = -1;
 H_func = syp.lambdify([SW.k1, SW.k2], expr2f(H_num2,10), 'numpy');
-print(H_func(0.1,0.1)[:,0])
 
 N_band = H_num.shape[0]
 # @nb.jit(nopython=True)

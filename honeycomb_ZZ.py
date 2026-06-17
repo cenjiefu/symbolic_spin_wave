@@ -20,15 +20,6 @@ h, J, K, G, Gp, J3 = syp.symbols('h, J, K, G, Gp, J3', real=True);
 th_H, phi_H, g, t1, p1, t2, p2, t3, p3, t4, p4, t5, p5, t6, p6, = syp.symbols('th_H, phi_H, g, t_1, p_1, t_2, p_2, t_3, p_3, t_4, p_4, t_5, p_5, t_6, p_6', real=True);
 
 start = timer();
-N = 4; # the zigzag order has 4 site in the magnetic unit cell
-
-## spin directions (spin_theta, spin_phi, orb_theta, orb_phi) on each site
-## can use symbols or numerical values
-spin = syp.zeros(N,2); 
-spin[0,0] = t1; spin[0,1] = p1; 
-spin[1,0] = t1; spin[1,1] = p1; 
-spin[2,0] = t2; spin[2,1] = p2; 
-spin[3,0] = t2; spin[3,1] = p2;
 
 ## define Hamiltonian with types of bonds. Each bond type has a 3x1 displacement vector and a 3x3 interaction matrix. make sure to use the same convention as in the Bonds.py file
 th_vec = syp.acos(1/syp.sqrt((3)));
@@ -59,6 +50,16 @@ v1 = syp.Matrix([1,0,0]);
 v2 = 2*syp.Matrix([syp.Integer(1)/syp.Integer(2),syp.sqrt(3)/2,0]);
 v3 = syp.Matrix([0, 0, syp.Integer(1)]);
 
+N = 4; # the zigzag order has 4 site in the magnetic unit cell
+
+## spin directions (spin_theta, spin_phi, orb_theta, orb_phi) on each site
+## can use symbols or numerical values
+spin = syp.zeros(N,2); 
+spin[0,0] = t1; spin[0,1] = p1; 
+spin[1,0] = t1; spin[1,1] = p1; 
+spin[2,0] = t2; spin[2,1] = p2; 
+spin[3,0] = t2; spin[3,1] = p2;
+
 ## position of each site in the magnetic unit cell. 
 atom_pos = syp.zeros(N,3);
 atom_pos[0,:] = syp.zeros(1,3);
@@ -82,11 +83,11 @@ g_num = 1;
 h_num = 0.0;
 th_H_num = 0.0; # field direction
 phi_H_num = 0.0;
-J_num = -3.7;
-K_num = -16.0;
-G_num = 8.0;
-Gp_num = 1.0;
-J3_num = 1.8;
+J_num = -4.0;
+K_num = -15.0;
+G_num = 10.0;
+Gp_num = 0.0;
+J3_num = 2.0;
 
 ## calculate spin directions of the model. can change to numerical root-finding for speed
 ## substitute in the numerical spin directions
@@ -150,5 +151,7 @@ print("spectrum. time: ", timer()-start);
 fig, ax = plt.subplots(figsize=(5,3))
 ax.plot(Ek[:,0])
 ax.plot(Ek[:,1])
+ax.plot(Ek[:,2])
+ax.plot(Ek[:,3])
 
 plt.show()
