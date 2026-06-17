@@ -3,7 +3,7 @@
 ## Table of Contents
 + [About](#about)
 + [Getting Started](#getting_started)
-+ [Usage]([notebook](./example.ipynb))
++ [Usage](./example.ipynb)
 
 ## About <a name = "about"></a>
 Python codes that calculate the symbolic spin wave Hamiltonian of a magnetic order of a spin model. Also apply to spin-orbital models following the procedure described in J. Cen and H.-Y. Kee, Phys. Rev. B 113, 174430.
