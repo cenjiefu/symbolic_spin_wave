@@ -71,7 +71,7 @@ atom_pos[2,:] = Bonds.delta_x.T-Bonds.delta_z.T;
 atom_pos[3,:] = 2*Bonds.delta_x.T-Bonds.delta_z.T;
 
 ## calculate all the bonds
-bonds = Bonds.getHoneycombBonds(atom_pos, v1,v2,v3, bond_vecs);
+bonds = Bonds.findBonds(atom_pos, v1,v2,v3, bond_vecs);
 print("Bonds. time: ", timer()-start);
 
 

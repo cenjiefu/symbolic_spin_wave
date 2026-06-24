@@ -28,7 +28,7 @@ delta_y = a1 + delta_z;
 #### bond_vecs: displacement vectors for each type of bonds
 #### return: list of bonds. each bond is a list of [site_i_index, site_j_index, BOND_TYPE, cell_shift_vector]
 #### you can modify to include more bonds (further neigbhour, interlayer, etc.) or to apply to other lattices
-def getHoneycombBonds(atom_pos, v1, v2, v3, bond_vecs):
+def findBonds(atom_pos, v1, v2, v3, bond_vecs):
 
     if not all( (bv.shape == (3,1)) and (isinstance(bv, syp.matrices.dense.MutableDenseMatrix) or isinstance(bv, syp.matrices.immutable.ImmutableDenseMatrix)) for bv in bond_vecs):
         raise Exception("each bond_vector must be 3x1 matrix") 
